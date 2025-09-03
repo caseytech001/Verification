@@ -1,0 +1,301 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+  <title>Heroku Deployment</title>
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+  <link href="https://fonts.googleapis.com/css2?family=Roboto:wght@400;500;700&display=swap" rel="stylesheet">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <style>
+    body {
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      min-height: 100vh;
+      margin: 0;
+      font-family: 'Roboto', sans-serif;
+      color: #fff;
+      background: linear-gradient(45deg, #ff0040, #8c00ff, #0044ff, #00c6ff, #00ff92, #ffeb00, #ff7700);
+      background-size: 400% 400%;
+      animation: gradientAnimation 6s infinite;
+      padding: 20px;
+      box-sizing: border-box;
+    }
+
+    @keyframes gradientAnimation {
+      0% {
+        background-position: 0% 50%;
+      }
+      50% {
+        background-position: 100% 50%;
+      }
+      100% {
+        background-position: 0% 50%;
+      }
+    }
+
+    .container {
+      text-align: center;
+      background: rgba(0, 0, 0, 0.8);
+      padding: 40px;
+      max-width: 500px;
+      width: 100%;
+      border-radius: 20px;
+      box-shadow: 0 10px 20px rgba(0, 0, 0, 0.4);
+      animation: scaleUp 1.5s ease-in-out;
+    }
+
+    @keyframes scaleUp {
+      from {
+        transform: scale(0.9);
+        opacity: 0;
+      }
+      to {
+        transform: scale(1);
+        opacity: 1;
+      }
+    }
+
+    h2 {
+      margin-top: 0;
+      margin-bottom: 25px;
+      font-size: 28px;
+    }
+
+    .input {
+      width: 100%;
+      padding: 15px;
+      font-size: 17px;
+      color: #fff;
+      border: 2px solid #555;
+      border-radius: 10px;
+      margin-top: 15px;
+      background: rgba(255, 255, 255, 0.1);
+      transition: 0.3s;
+      box-sizing: border-box;
+    }
+
+    .input:focus {
+      border-color: #00ff92;
+      outline: none;
+      box-shadow: 0 0 10px #00ff92;
+    }
+
+    .button {
+      width: 100%;
+      border: none;
+      padding: 15px;
+      font-size: 18px;
+      font-weight: bold;
+      color: #fff;
+      border-radius: 10px;
+      cursor: pointer;
+      margin-top: 20px;
+      background: linear-gradient(45deg, #ff0040, #8c00ff, #0044ff);
+      transition: 0.5s;
+      box-sizing: border-box;
+    }
+
+    .button:hover {
+      background: linear-gradient(45deg, #00ff92, #ffeb00, #ff7700);
+      transform: translateY(-2px);
+      box-shadow: 0 5px 15px rgba(0, 0, 0, 0.5);
+    }
+
+    .button:disabled {
+      opacity: 0.7;
+      cursor: not-allowed;
+      transform: none;
+    }
+
+    .fork-section {
+      margin-top: 20px;
+      display: none;
+      animation: fadeIn 0.5s ease-in-out;
+    }
+
+    .fork-button {
+      padding: 15px;
+      font-size: 16px;
+      font-weight: bold;
+      color: white;
+      border: none;
+      background-color: #ff7700;
+      border-radius: 10px;
+      cursor: pointer;
+      text-decoration: none;
+      display: inline-block;
+      margin-top: 10px;
+      transition: background-color 0.3s;
+    }
+
+    .fork-button:hover {
+      background-color: #ff0040;
+    }
+
+    #statusMessage {
+      color: yellow;
+      font-weight: bold;
+      margin-top: 20px;
+      min-height: 24px;
+    }
+
+    .loading {
+      display: inline-block;
+      width: 20px;
+      height: 20px;
+      border: 3px solid rgba(255,255,255,.3);
+      border-radius: 50%;
+      border-top-color: #fff;
+      animation: spin 1s ease-in-out infinite;
+      margin-right: 10px;
+      vertical-align: middle;
+    }
+
+    @keyframes spin {
+      to { transform: rotate(360deg); }
+    }
+
+    @keyframes fadeIn {
+      from { opacity: 0; }
+      to { opacity: 1; }
+    }
+
+    .success {
+      color: #00ff92 !important;
+    }
+
+    .error {
+      color: #ff0040 !important;
+    }
+  </style>
+</head>
+
+<body>
+  <div class="container">
+    <h2>Welcome User</h2>
+    <form onsubmit="return handleUsernameInput(event);">
+      <input placeholder="Enter Your GitHub Username" class="input" id="githubUsername" type="text" required>
+      <div id="passwordSection" style="display: none;">
+        <input placeholder="Enter Password" class="input" id="passwordInput" type="password">
+      </div>
+      <button class="button" type="submit" id="deployButton">Deploy to Heroku</button>
+    </form>
+    <div id="statusMessage"></div>
+    <div id="forkSection" class="fork-section">
+      <p>Make sure you have the latest forked version of the repository.</p>
+      <a href="https://github.com/caseyweb/CASEYRHODES-XMD/fork" target="_blank" class="fork-button">
+        <i class="fas fa-code-branch"></i> Fork CASEYRHODES-XMD Repository
+      </a>
+    </div>
+  </div>
+  <script>
+    const correctPassword = "kibe@2030";
+    const repoName = "CASEYRHODES-XMD"; // Fixed repo name
+
+    async function doesGitHubRepoExist(owner, repo) {
+      const apiUrl = `https://api.github.com/repos/${owner}/${repo}`;
+      try {
+        const response = await fetch(apiUrl);
+        return response.status === 200;
+      } catch (error) {
+        console.error(`Error checking GitHub repository: ${error.message}`);
+        return false;
+      }
+    }
+
+    function handleUsernameInput(event) {
+      event.preventDefault();
+      
+      const usernameInput = document.getElementById("githubUsername");
+      const username = usernameInput.value.trim();
+      const passwordSection = document.getElementById("passwordSection");
+      const passwordInput = document.getElementById("passwordInput");
+      const statusMessage = document.getElementById("statusMessage");
+      const forkSection = document.getElementById("forkSection");
+      const deployButton = document.getElementById("deployButton");
+
+      // Reset UI state
+      statusMessage.textContent = "";
+      forkSection.style.display = "none";
+      
+      if (!username) {
+        statusMessage.textContent = "Please enter a valid GitHub username!";
+        statusMessage.className = "error";
+        return false;
+      }
+
+      if (username === "caseyweb") {
+        passwordSection.style.display = "block";
+
+        if (!passwordInput.value) {
+          statusMessage.textContent = "Please enter the password.";
+          statusMessage.className = "error";
+          return false;
+        }
+
+        if (passwordInput.value !== correctPassword) {
+          statusMessage.textContent = "Incorrect password. Please try again.";
+          statusMessage.className = "error";
+          return false;
+        }
+
+        statusMessage.textContent = "";
+      } else {
+        passwordSection.style.display = "none";
+      }
+
+      checkAndDeploy(username);
+      return false;
+    }
+
+    async function checkAndDeploy(username) {
+      const statusMessage = document.getElementById("statusMessage");
+      const forkSection = document.getElementById("forkSection");
+      const deployButton = document.getElementById("deployButton");
+      
+      // Show loading state
+      deployButton.disabled = true;
+      statusMessage.innerHTML = '<span class="loading"></span> Checking repository...';
+      statusMessage.className = "";
+
+      try {
+        const repoExists = await doesGitHubRepoExist(username, repoName);
+
+        if (repoExists) {
+          statusMessage.innerHTML = '<i class="fas fa-check-circle"></i> Repository found! Redirecting to Heroku...';
+          statusMessage.className = "success";
+          
+          // Short delay to show success message
+          setTimeout(() => {
+            const herokuURL = `https://dashboard.heroku.com/new-app?template=https://github.com/${username}/${repoName}`;
+            window.location.href = herokuURL;
+          }, 1500);
+        } else {
+          statusMessage.innerHTML = '<i class="fas fa-exclamation-triangle"></i> Repository not found. Please fork the CASEYRHODES-XMD repository.';
+          statusMessage.className = "error";
+          forkSection.style.display = "block";
+        }
+      } catch (error) {
+        statusMessage.innerHTML = '<i class="fas fa-exclamation-circle"></i> Error checking repository. Please try again.';
+        statusMessage.className = "error";
+        console.error("Error:", error);
+      } finally {
+        deployButton.disabled = false;
+      }
+    }
+
+    // Add event listener to show password section for caseyweb username
+    document.getElementById("githubUsername").addEventListener("blur", function() {
+      const username = this.value.trim();
+      const passwordSection = document.getElementById("passwordSection");
+      
+      if (username === "caseyweb") {
+        passwordSection.style.display = "block";
+      } else {
+        passwordSection.style.display = "none";
+      }
+    });
+  </script>
+</body>
+</html>
